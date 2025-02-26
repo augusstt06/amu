@@ -1,6 +1,6 @@
 from typing import Optional, Dict, Any, List
 from dotenv import load_dotenv
-from .supabase import RestaurantData
+from .supabase import RestaurantData, save_restaurant_to_db
 import os
 import requests
 
@@ -34,17 +34,25 @@ def search_restaurant(query: str) -> List[RestaurantData]:
             name = item.get('title', '').replace('<b>', '').replace('</b>', '')
             place_id = item.get('link', '').split('/')[-1]
             
+            # Convert Naver coordinates to latitude/longitude
+            mapx = float(item.get('mapx', 0)) / 10000000
+            mapy = float(item.get('mapy', 0)) / 10000000
+            
             restaurant: RestaurantData = {
                 'restaurant_id': place_id,
                 'name': name,
                 'address': item.get('address', ''),
                 'category': item.get('category', '음식점'),
-                'phone': item.get('telephone', '')
+                'telephone': item.get('telephone', ''),
+                'latitude': mapy,
+                'longitude': mapx,
+                'rating': 0.0  # Default rating
             }
             
-            
-            if restaurant['restaurant_id'] and restaurant['name'] :
-                restaurants.append(restaurant)
+            if restaurant['name']:  # 이름이 있는 경우에만 저장
+                # Save or update restaurant in database
+                saved_restaurant = save_restaurant_to_db(restaurant)
+                restaurants.append(saved_restaurant)
             
         return restaurants
     except requests.exceptions.RequestException as e:

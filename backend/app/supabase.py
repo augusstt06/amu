@@ -27,21 +27,29 @@ class RestaurantData(TypedDict):
     name: str
     address: str
     category: str
-    phone: str
+    telephone: str
+    latitude: float
+    longitude: float
+    rating: float
 
-    
-def insert_restaurant(restaurant_data: RestaurantData) -> Optional[dict]:
-    required_fields = ['restaurant_id', 'name', 'address', 'category', 'phone']
-    missing_fields = [field for field in required_fields if not restaurant_data.get(field)]
+def save_restaurant_to_db(restaurant_data: RestaurantData) -> Optional[dict]:
+    required_fields = ['restaurant_id', 'name', 'address', 'category', 'telephone', 'latitude', 'longitude', 'rating']
+    missing_fields = [field for field in required_fields if restaurant_data.get(field) is None]
 
     if missing_fields:
         print(f"Missing required fields: {', '.join(missing_fields)}")
         return None
     
-    data = {field: restaurant_data.get(field) for field in required_fields}
-    
     try:
-        query = supabase.table('restaurants').insert(data).execute()
+        existing = supabase.table('restaurants').select('*').eq('restaurant_id', restaurant_data['restaurant_id']).execute()
+        
+        if existing.data:
+            # Update existing restaurant
+            query = supabase.table('restaurants').update(restaurant_data).eq('restaurant_id', restaurant_data['restaurant_id']).execute()
+        else:
+            # Insert new restaurant
+            query = supabase.table('restaurants').insert(restaurant_data).execute()
+            
         return query.data[0]
     except Exception as e:
         print("Error details:", str(e))
