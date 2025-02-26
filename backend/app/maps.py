@@ -23,12 +23,13 @@ def search_restaurant(query: str) -> List[RestaurantData]:
         'query': f"{query} 맛집",
         'display': 10,
     }
+    
     try:
         res = requests.get(url, headers=headers, params=params)
         res.raise_for_status()
         results = res.json().get('items', [])
 
-        restaurants = List[RestaurantData] = []
+        restaurants: List[RestaurantData] = []
         for item in results:
             name = item.get('title', '').replace('<b>', '').replace('</b>', '')
             place_id = item.get('link', '').split('/')[-1]
@@ -42,7 +43,7 @@ def search_restaurant(query: str) -> List[RestaurantData]:
             }
             
             
-            if all(restaurant.values()):
+            if restaurant['restaurant_id'] and restaurant['name'] :
                 restaurants.append(restaurant)
             
         return restaurants
