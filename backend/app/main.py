@@ -1,5 +1,4 @@
 from fastapi import FastAPI
-from .supabase import get_all_restaurants
 from .maps import search_restaurant
 app = FastAPI()
 
@@ -10,6 +9,6 @@ def read_root():
 @app.get('/restaurants')
 def get_restaurants(query: str):
     return search_restaurant(query)
-    # return get_all_restaurants()
+
 
 
