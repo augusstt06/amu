@@ -2,10 +2,10 @@ import os
 import time
 import requests
 import uuid
-from supabase import create_client, Client
+from backend.app.db.supabase import create_client, Client
 from dotenv import load_dotenv
 from app.constant import SEOUL_DISTRICTS, FRANCHISES
-
+from app.models.restaurant import Restaurant
 load_dotenv()   
 
 
@@ -71,19 +71,18 @@ def save_to_db(restaurants, district):
         
         restaurant_id = str(uuid.uuid4())
 
-        restaurant_data = {
-            "id": restaurant_id,
-            "name": item["title"].replace("<b>", "").replace("</b>", ""),
-            "category": item.get("category", ""),
-            "description": item.get("description", ""),
-            "phone": item.get("telephone", ""),
-            "address": item.get("roadAddress", ""),
-            "district": district, 
-            "map_x": float(item["mapx"]),
-            "map_y": float(item["mapy"]),
-        }
+        restaurant = Restaurant(
+                id=restaurant_id,
+                name=restaurant_name,
+                category=item.get("category", ""),
+                description=item.get("description", ""),
+                phone=item.get("telephone", ""),
+                address=item.get("roadAddress", ""),
+                map_x=float(item["mapx"]),
+                map_y=float(item["mapy"])
+            )
 
-        supabase.table("restaurants").insert(restaurant_data).execute()
+        supabase.table("restaurants").insert(restaurant).execute()
 
 def main():
     
