@@ -1,3 +1,4 @@
+import hashlib
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
@@ -10,9 +11,12 @@ import os
 from dotenv import load_dotenv
 from supabase import create_client, Client
 import time
+from app.models.review import Review
 
-def get_reviews_with_selenium(restaurant_name, restaurant_id):
-    """네이버 지도에서 특정 식당의 리뷰를 크롤링"""
+def generate_review_hash(content: str) -> str:
+    return hashlib.sha256(content.encode()).hexdigest()
+
+def get_reviews_with_selenium(restaurant_name: str, restaurant_id: str) -> list[Review]:
     try:
         chrome_options = Options()
         # chrome_options.add_argument('--headless')  # 테스트시 주석처리
@@ -21,7 +25,6 @@ def get_reviews_with_selenium(restaurant_name, restaurant_id):
         driver = webdriver.Chrome(options=chrome_options)
         print(f"🌐 '{restaurant_name}' 검색 중...")
         
-        # 네이버 지도 검색 URL
         search_url = f"https://map.naver.com/p/search/{restaurant_name}"
         driver.get(search_url)
         time.sleep(3)
@@ -59,12 +62,22 @@ def get_reviews_with_selenium(restaurant_name, restaurant_id):
             for review_element in review_elements[:20]:
                 try:
                     review_text = review_element.find_element(By.CSS_SELECTOR, "div.pui__vn15t2 a").text
-                    review_data = {
-                        "restaurant_id": restaurant_id,
-                        "content": review_text,
-                        "source": "naver_map"
-                    }
-                    reviews.append(review_data)
+                    # 별점 추출 시도
+                    try:
+                        rating_element = review_element.find_element(By.CSS_SELECTOR, "span.pui__jhpEyP")
+                        rating_text = rating_element.text
+                        rating = 5.0 if rating_text else None
+                    except NoSuchElementException:
+                        rating = None
+                    
+                    # Review 모델 인스턴스 생성
+                    review = Review(
+                        restaurant_id=restaurant_id,
+                        review_text=review_text,
+                        rating=rating,
+                        review_hash=generate_review_hash(review_text)
+                    )
+                    reviews.append(review)
                 except Exception as e:
                     print(f"리뷰 추출 실패: {str(e)}")
                     continue
@@ -83,34 +96,52 @@ def get_reviews_with_selenium(restaurant_name, restaurant_id):
     finally:
         driver.quit()
 
-def save_reviews_to_db(supabase, reviews):
+def save_reviews_to_db(supabase: Client, reviews: list[Review]):
     for review in reviews:
         try:
-            supabase.table("reviews").insert(review).execute()
+            existing_review = supabase.table("reviews").select("id").eq("restaurant_id", review.restaurant_id).eq("review_hash", review.review_hash).execute()
+
+            if existing_review.data:
+                print(f"⚠️ 중복 리뷰 스킵: {review.review_text[:30]}...")
+                continue
+
+            review_data = review.model_dump(exclude={'id', 'created_at'})
+            review_data['restaurant_id'] = str(review_data['restaurant_id'])  
+            if review_data.get('user_id'): 
+                review_data['user_id'] = str(review_data['user_id'])
+            
+            supabase.table("reviews").insert(review_data).execute()
+            print(f"✅ 리뷰 저장 완료: {review.review_text[:30]}...")
         except Exception as e:
             print(f"❌ 리뷰 저장 실패: {str(e)}")
 
-def main(supabase):
+def main(supabase: Client):
     response = supabase.table("restaurants").select("id, name").execute()
     restaurants = response.data
     
-    for restaurant in restaurants:
-        print(f"📌 {restaurant['name']}의 리뷰 수집 중...")
-        reviews = get_reviews_with_selenium(restaurant['name'], restaurant['id'])
-        
-        if reviews:
-            save_reviews_to_db(supabase, reviews)
-            print(f"✅ {restaurant['name']} 리뷰 저장 완료 ({len(reviews)}개)")
-        else:
-            print(f"⚠️ {restaurant['name']} 리뷰 없음")
+    print(f"총 {len(restaurants)}개의 레스토랑을 찾았습니다.")
+    
+    for i, restaurant in enumerate(restaurants, 1):
+        print(f"\n[{i}/{len(restaurants)}] 📌 {restaurant['name']}의 리뷰 수집 중...")
+        try:
+            reviews = get_reviews_with_selenium(restaurant['name'], restaurant['id'])
+            
+            if reviews:
+                save_reviews_to_db(supabase, reviews)
+                print(f"✅ {restaurant['name']} 리뷰 저장 완료 ({len(reviews)}개)")
+            else:
+                print(f"⚠️ {restaurant['name']} 리뷰 없음")
+        except Exception as e:
+            print(f"❌ {restaurant['name']} 처리 중 오류 발생: {str(e)}")
+            continue
+            
+        time.sleep(2)  # 각 레스토랑 사이에 잠시 대기
 
 if __name__ == "__main__":
-    # Supabase 연결
     load_dotenv()
     DB_URL = os.getenv("DB_URL")
     DB_KEY = os.getenv("DB_KEY")
     supabase: Client = create_client(DB_URL, DB_KEY)
     
-    # 실제 리뷰 크롤링 실행
     main(supabase)
 
