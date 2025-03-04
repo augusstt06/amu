@@ -12,46 +12,53 @@ from supabase import create_client, Client
 import time
 
 def get_reviews_with_selenium(restaurant_name, restaurant_id):
+    """네이버 지도에서 특정 식당의 리뷰를 크롤링"""
     try:
         chrome_options = Options()
-        # chrome_options.add_argument('--headless') 
+        # chrome_options.add_argument('--headless')  # 테스트시 주석처리
         chrome_options.add_argument('--window-size=1920,1080')
         
         driver = webdriver.Chrome(options=chrome_options)
         print(f"🌐 '{restaurant_name}' 검색 중...")
         
-        place_url = f"https://map.naver.com/p/entry/place/{restaurant_id}"
-        driver.get(place_url)
+        # 네이버 지도 검색 URL
+        search_url = f"https://map.naver.com/p/search/{restaurant_name}"
+        driver.get(search_url)
         time.sleep(3)
         
         try:
-            WebDriverWait(driver, 10).until(
-                EC.frame_to_be_available_and_switch_to_it((By.ID, "entryIframe"))
+            search_iframe = WebDriverWait(driver, 10).until(
+                EC.presence_of_element_located((By.CSS_SELECTOR, "iframe#searchIframe"))
             )
+            driver.switch_to.frame(search_iframe)
+            print("✅ searchIframe 진입 완료")
+
+            current_url = driver.current_url
+            review_url = current_url.split("?")[0] + "?c=15.00,0,0,0,dh&placePath=/review&isCorrectAnswer=true"
+            driver.get(review_url)
+            time.sleep(3)
+            print("✅ 리뷰 페이지 직접 이동 완료")
             
-            review_tab = WebDriverWait(driver, 10).until(
-                EC.element_to_be_clickable((By.CSS_SELECTOR, "div.place_section_content a[href*='review']"))
+            entry_iframe = WebDriverWait(driver, 10).until(
+                EC.presence_of_element_located((By.CSS_SELECTOR, "iframe#entryIframe"))
             )
-            print("✅ 리뷰 탭 찾음")
-            driver.execute_script("arguments[0].click();", review_tab)
+            driver.switch_to.frame(entry_iframe)
+            print("✅ entryIframe 진입 완료")
             time.sleep(2)
-            
-            review_container = WebDriverWait(driver, 10).until(
-                EC.presence_of_element_located((By.CSS_SELECTOR, "div.place_section.k5tcc"))
+        
+            review_elements = WebDriverWait(driver, 10).until(
+                EC.presence_of_all_elements_located((By.CSS_SELECTOR, "li.place_apply_pui"))
             )
-            
-    
-            review_elements = review_container.find_elements(By.CSS_SELECTOR, "div.ZZ4OK, div._3FaRE")
             print(f"✅ {len(review_elements)}개의 리뷰 발견")
+            
+            if not review_elements:
+                print("⚠️ 리뷰 요소를 찾을 수 없습니다. 페이지 소스 확인:")
+                print(driver.page_source[:500])
             
             reviews = []
             for review_element in review_elements[:20]:
                 try:
-                    review_text = review_element.find_element(
-                        By.CSS_SELECTOR, 
-                        "span.zPfVt, span._3l2Rq"
-                    ).text
-                    
+                    review_text = review_element.find_element(By.CSS_SELECTOR, "div.pui__vn15t2 a").text
                     review_data = {
                         "restaurant_id": restaurant_id,
                         "content": review_text,
@@ -63,15 +70,14 @@ def get_reviews_with_selenium(restaurant_name, restaurant_id):
                     continue
             
             return reviews
-
         except TimeoutException as e:
-            print(f"⚠️ {restaurant_name}: 검색 결과 또는 리뷰를 찾을 수 없습니다.")
+            print(f"⚠️ 에러 발생: {str(e)}")
             print("현재 URL:", driver.current_url)
-            print("에러 상세:", str(e))
             return []
 
     except Exception as e:
         print(f"❌ {restaurant_name} 크롤링 중 오류 발생: {str(e)}")
+        print("현재 URL:", driver.current_url)
         return []
 
     finally:
@@ -98,31 +104,13 @@ def main(supabase):
         else:
             print(f"⚠️ {restaurant['name']} 리뷰 없음")
 
-def test_first_five_restaurants():
+if __name__ == "__main__":
+    # Supabase 연결
     load_dotenv()
     DB_URL = os.getenv("DB_URL")
     DB_KEY = os.getenv("DB_KEY")
     supabase: Client = create_client(DB_URL, DB_KEY)
     
-    try:
-        response = supabase.table("restaurants").select("id, name").limit(5).execute()
-        restaurants = response.data
-        
-        print(f"📍 테스트할 식당 목록:")
-        for i, restaurant in enumerate(restaurants, 1):
-            print(f"\n{i}. {restaurant['name']}")
-            print(f"🔍 리뷰 크롤링 중...")
-            
-            reviews = get_reviews_with_selenium(restaurant['name'], restaurant['id'])
-            
-            print(f"📊 검색된 리뷰 수: {len(reviews)}개")
-            if reviews:
-                print("📝 첫 번째 리뷰 샘플:")
-                print(reviews[0]['content'][:100] + "..." if len(reviews[0]['content']) > 100 else reviews[0]['content'])
-            print("-" * 50)
-            
-    except Exception as e:
-        print(f"❌ 테스트 중 오류 발생: {str(e)}")
+    # 실제 리뷰 크롤링 실행
+    main(supabase)
 
-if __name__ == "__main__":
-    test_first_five_restaurants()
