@@ -5,22 +5,15 @@ import os
 from dotenv import load_dotenv
 
 load_dotenv()
-client = OpenAI(api_key=os.getenv('AI_KEY'))
+client = OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
 
-def test_analyze_reviews():
-    test_reviews = [
-        "음식이 정말 맛있었고 서비스도 친절했어요. 다음에 또 방문하고 싶습니다!",
-        "위생 상태가 좋지 않았고 음식이 너무 짰어요. 실망했습니다.",
-        "가격대비 괜찮은 맛이에요. 보통입니다.",
-        "인테리어가 예쁘고 분위기가 좋았어요. 다만 음식이 조금 식어서 나왔네요.",
-        "직원분들이 너무 친절하시고 음식도 맛있었어요. 특히 김치찌개가 일품이었습니다!"
-    ]
-    test_ratings = [4.5, 2.0, 3.0, 3.5, 5.0]
-
+def analyze_reviews(review_texts: List[str], ratings: List[float]) -> dict:
     try:
-        print("\n각 리뷰 분석 결과:")
         sentiments = []
-        for i, review in enumerate(test_reviews, 1):
+        total_reviews = len(review_texts)
+        
+        for i, review in enumerate(review_texts, 1):
+            print(f"\r리뷰 분석 중... {i}/{total_reviews}", end="")
             prompt = f"""
 다음 식당 리뷰의 감성을 0부터 10까지의 점수로 분석해주세요.
 10점이 가장 긍정적이고 0점이 가장 부정적입니다.
@@ -40,25 +33,32 @@ def test_analyze_reviews():
             )
             
             score = float(response.choices[0].message.content.strip())
-            print(f"\n리뷰 {i}: {review}")
-            print(f"감성 점수: {score}/10")
             sentiments.append(score)
 
+        print()  
+
         avg_sentiment = np.mean(sentiments)
+        avg_rating = np.mean(ratings) if ratings else 0.0
         
         summary_prompt = f"""
-다음은 한 식당의 리뷰들입니다. 이 리뷰들을 바탕으로 식당에 대한 한 줄 요약을 작성해주세요.
-특히 음식의 맛, 서비스, 분위기 중 자주 언급되는 특징을 중심으로 요약해주세요.
+다음은 한 식당의 여러 리뷰들입니다. 이 리뷰들을 바탕으로 식당을 한 문장으로 요약해주세요.
+다음 형식으로 작성해주세요: "[대표 특징]이 돋보이는 [음식 종류]. [대표 메뉴나 장점] 추천" 형식으로 작성하고, 주요 단점이 있다면 마지막에 ". 다만, [단점]" 형식으로 추가해주세요.
+
+예시:
+- 분위기가 좋은 족발 맛집. 매콤한 양념족발이 일품. 다만, 가격대가 높은 편
+- 가성비 좋은 일식당. 신선한 회와 사케동 추천. 다만, 웨이팅이 긴 편
+- 정갈한 한정식 맛집. 계절 반찬이 특히 훌륭. 다만, 주차가 불편
+- 전통적인 중식당. 짜장면과 탕수육 맛이 일품 (단점 없는 경우 생략)
 
 리뷰들:
-{' '.join(test_reviews)}
+{' '.join(review_texts)}
 
-한 줄 요약:"""
+한 문장 요약:"""
 
         summary_response = client.chat.completions.create(
             model="gpt-3.5-turbo",
             messages=[
-                {"role": "system", "content": "당신은 식당 리뷰 분석 전문가입니다."},
+                {"role": "system", "content": "당신은 식당 리뷰 요약 전문가입니다. 장점 위주로 요약하되, 주요 단점이 있다면 마지막에 추가해주세요."},
                 {"role": "user", "content": summary_prompt}
             ],
             temperature=0.7
@@ -66,14 +66,11 @@ def test_analyze_reviews():
         
         summary = summary_response.choices[0].message.content.strip()
         
-        rating_reliability = 1 - abs(avg_sentiment/10 - np.mean(test_ratings)/5)
-        
         return {
             'sentiment_score': avg_sentiment,
             'review_summary': summary,
-            'rating_reliability': rating_reliability,
-            'average_rating': np.mean(test_ratings),
-            'review_count': len(test_reviews)
+            'review_count': len(review_texts),
+            'average_rating': avg_rating
         }
 
     except Exception as e:
@@ -81,6 +78,6 @@ def test_analyze_reviews():
         return None
 
 if __name__ == "__main__":
-    result = test_analyze_reviews()
-    if result:
-        print("\n최종 분석 결과:", result)
+    result = analyze_reviews()
+    # if result:
+    #     print("\n최종 분석 결과:", result)
