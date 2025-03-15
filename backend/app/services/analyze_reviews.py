@@ -23,19 +23,38 @@ def analyze_reviews(review_texts: List[str], ratings: List[float]) -> dict:
 
 점수:"""
             
-            response = client.chat.completions.create(
-                model="gpt-3.5-turbo",
-                messages=[
-                    {"role": "system", "content": "당신은 식당 리뷰 감성 분석 전문가입니다."},
-                    {"role": "user", "content": prompt}
-                ],
-                temperature=0
-            )
-            
-            score = float(response.choices[0].message.content.strip())
-            sentiments.append(score)
+            try:
+                response = client.chat.completions.create(
+                    model="gpt-3.5-turbo",
+                    messages=[
+                        {"role": "system", "content": "당신은 식당 리뷰 감성 분석 전문가입니다. 반드시 0부터 10 사이의 숫자만 출력해주세요."},
+                        {"role": "user", "content": prompt}
+                    ],
+                    temperature=0
+                )
+                
+                score_text = response.choices[0].message.content.strip()
+                
 
-        print()  
+                score_text = ''.join(filter(lambda x: x.isdigit() or x == '.', score_text))
+                
+                try:
+                    score = float(score_text)
+
+                    if score < 0:
+                        score = 0
+                    elif score > 10:
+                        score = 10
+                    sentiments.append(score)
+                except ValueError:
+                    print(f"\n⚠️ 점수 변환 실패: {score_text}, 기본값 5.0 사용")
+                    sentiments.append(5.0)  
+                    
+            except Exception as e:
+                print(f"\n⚠️ 리뷰 분석 실패: {str(e)}, 기본값 5.0 사용")
+                sentiments.append(5.0)  
+
+        print() 
 
         avg_sentiment = np.mean(sentiments)
         avg_rating = np.mean(ratings) if ratings else 0.0
