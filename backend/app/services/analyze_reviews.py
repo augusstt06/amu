@@ -3,18 +3,15 @@ import numpy as np
 from openai import OpenAI
 import os
 from dotenv import load_dotenv
+import time
+from tenacity import retry, stop_after_attempt, wait_exponential
 
 load_dotenv()
 client = OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
 
-def analyze_reviews(review_texts: List[str], ratings: List[float]) -> dict:
-    try:
-        sentiments = []
-        total_reviews = len(review_texts)
-        
-        for i, review in enumerate(review_texts, 1):
-            print(f"\r리뷰 분석 중... {i}/{total_reviews}", end="")
-            prompt = f"""
+@retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=4, max=10))
+def analyze_single_review(review: str) -> float:
+    prompt = f"""
 다음 식당 리뷰의 감성을 0부터 10까지의 점수로 분석해주세요.
 10점이 가장 긍정적이고 0점이 가장 부정적입니다.
 숫자만 출력해주세요.
@@ -22,39 +19,43 @@ def analyze_reviews(review_texts: List[str], ratings: List[float]) -> dict:
 리뷰: {review}
 
 점수:"""
-            
+    
+    response = client.chat.completions.create(
+        model="gpt-3.5-turbo",
+        messages=[
+            {"role": "system", "content": "당신은 식당 리뷰 감성 분석 전문가입니다. 반드시 0부터 10 사이의 숫자만 출력해주세요."},
+            {"role": "user", "content": prompt}
+        ],
+        temperature=0,
+        timeout=30  
+    )
+    
+    score_text = response.choices[0].message.content.strip()
+    score_text = ''.join(filter(lambda x: x.isdigit() or x == '.', score_text))
+    
+    try:
+        score = float(score_text)
+        return max(0, min(10, score)) 
+    except ValueError:
+        return 5.0 
+
+def analyze_reviews(review_texts: List[str], ratings: List[float]) -> dict:
+    try:
+        print("\n각 리뷰 분석 결과:")
+        sentiments = []
+        total_reviews = len(review_texts)
+        
+        for i, review in enumerate(review_texts, 1):
+            print(f"\r리뷰 분석 중... {i}/{total_reviews}", end="")
             try:
-                response = client.chat.completions.create(
-                    model="gpt-3.5-turbo",
-                    messages=[
-                        {"role": "system", "content": "당신은 식당 리뷰 감성 분석 전문가입니다. 반드시 0부터 10 사이의 숫자만 출력해주세요."},
-                        {"role": "user", "content": prompt}
-                    ],
-                    temperature=0
-                )
-                
-                score_text = response.choices[0].message.content.strip()
-                
-
-                score_text = ''.join(filter(lambda x: x.isdigit() or x == '.', score_text))
-                
-                try:
-                    score = float(score_text)
-
-                    if score < 0:
-                        score = 0
-                    elif score > 10:
-                        score = 10
-                    sentiments.append(score)
-                except ValueError:
-                    print(f"\n⚠️ 점수 변환 실패: {score_text}, 기본값 5.0 사용")
-                    sentiments.append(5.0)  
-                    
+                score = analyze_single_review(review)
+                sentiments.append(score)
+                time.sleep(1)  # API 호출 간 간격 추가
             except Exception as e:
                 print(f"\n⚠️ 리뷰 분석 실패: {str(e)}, 기본값 5.0 사용")
-                sentiments.append(5.0)  
+                sentiments.append(5.0)
 
-        print() 
+        print()  # 줄바꿈
 
         avg_sentiment = np.mean(sentiments)
         avg_rating = np.mean(ratings) if ratings else 0.0
@@ -66,7 +67,7 @@ def analyze_reviews(review_texts: List[str], ratings: List[float]) -> dict:
 예시:
 - 분위기가 좋은 족발 맛집. 매콤한 양념족발이 일품. 다만, 가격대가 높은 편
 - 가성비 좋은 일식당. 신선한 회와 사케동 추천. 다만, 웨이팅이 긴 편
-- 정갈한 한정식 맛집. 계절 반찬이 특히 훌륭. 다만, 주차가 불편
+- 정갈한 한정식 맛집. 계절 반찬이 특히 훌륭하지만, 주차가 불편
 - 전통적인 중식당. 짜장면과 탕수육 맛이 일품 (단점 없는 경우 생략)
 
 리뷰들:

@@ -68,6 +68,7 @@ StrEnum==0.4.15
 supabase==2.13.0
 supafunc==0.9.3
 sympy==1.13.1
+tenacity==9.0.0
 tokenizers==0.21.0
 torch==2.6.0
 tqdm==4.67.1
