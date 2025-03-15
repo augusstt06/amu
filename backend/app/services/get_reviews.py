@@ -255,8 +255,18 @@ def main(supabase: Client):
                     try:
                         analyze_data = analyze.model_dump(exclude={'id', 'created_at'})
                         analyze_data['restaurant_id'] = str(analyze_data['restaurant_id'])  # UUID를 문자열로 변환
-                        supabase.table("analyze").insert(analyze_data).execute()
-                        print("✅ 분석 결과 저장 완료")
+                        
+                        # 기존 분석 결과가 있는지 확인
+                        existing = supabase.table("analyze").select("id").eq("restaurant_id", analyze_data['restaurant_id']).execute()
+                        
+                        if existing.data:
+                            # 기존 데이터가 있으면 업데이트
+                            supabase.table("analyze").update(analyze_data).eq("restaurant_id", analyze_data['restaurant_id']).execute()
+                            print("✅ 분석 결과 업데이트 완료")
+                        else:
+                            # 새로운 데이터 삽입
+                            supabase.table("analyze").insert(analyze_data).execute()
+                            print("✅ 분석 결과 저장 완료")
                     except Exception as e:
                         print(f"❌ 분석 결과 저장 실패: {str(e)}")
             else:
