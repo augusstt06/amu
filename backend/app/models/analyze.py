@@ -6,6 +6,7 @@ from uuid import UUID
 class Analyze(BaseModel):
     id: Optional[UUID] = None
     restaurant_id: UUID
+    name: str
     sentiment_score: float
     review_summary: str
     rating_reliability: float

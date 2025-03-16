@@ -61,7 +61,7 @@ def analyze_reviews(review_texts: List[str], ratings: List[float]) -> dict:
         avg_rating = np.mean(ratings) if ratings else 0.0
         
         summary_prompt = f"""
-다음은 한 식당의 여러 리뷰들입니다. 이 리뷰들을 바탕으로 식당을 한 문장으로 요약해주세요.
+다음은 한 식당의 여러 리뷰들입니다. 이 리뷰들을 바탕으로 식당을 한 문장(공백을 포함한 80자 이내)으로 요약해주세요.
 다음 형식으로 작성해주세요: "[대표 특징]이 돋보이는 [음식 종류]. [대표 메뉴나 장점] 추천" 형식으로 작성하고, 주요 단점이 있다면 마지막에 ". 다만, [단점]" 형식으로 추가해주세요.
 
 예시:

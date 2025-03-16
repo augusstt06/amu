@@ -246,6 +246,7 @@ def main(supabase: Client):
                     
                     analyze = Analyze(
                         restaurant_id=restaurant['id'],
+                        name=restaurant['name'],
                         sentiment_score=sentiment_score,
                         review_summary=analysis_result['review_summary'],
                         rating_reliability=rating_reliability,
