@@ -50,7 +50,7 @@ def analyze_reviews(review_texts: List[str], ratings: List[float]) -> dict:
             try:
                 score = analyze_single_review(review)
                 sentiments.append(score)
-                time.sleep(1)  # API 호출 간 간격 추가
+                time.sleep(1)  
             except Exception as e:
                 print(f"\n⚠️ 리뷰 분석 실패: {str(e)}, 기본값 5.0 사용")
                 sentiments.append(5.0)

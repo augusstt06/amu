@@ -20,7 +20,7 @@ def generate_review_hash(content: str) -> str:
 
 def initialize_driver() -> webdriver.Chrome:
     chrome_options = Options()
-    # chrome_options.add_argument('--headless')
+    # chrome_options.add_argument('--headless') => 수정 필요
     chrome_options.add_argument('--window-size=1920,1080')
     return webdriver.Chrome(options=chrome_options)
 
@@ -166,7 +166,7 @@ def extract_reviews(driver: webdriver.Chrome, restaurant_id: str) -> list[dict]:
             except Exception as e:
                 continue
         
-        print()  # 줄바꿈
+        print()  
         return reviews
     except Exception as e:
         print(f"\n❌ 리뷰 추출 실패: {str(e)}")
