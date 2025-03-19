@@ -1,3 +1,5 @@
+# FIXME: db에 존재하는 식당 스킵.
+
 import hashlib
 from selenium import webdriver
 from selenium.webdriver.common.by import By
