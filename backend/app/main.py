@@ -5,6 +5,7 @@ from backend.app.db.supabase import supabase
 from backend.app.get_restaurants import get_restaurants
 from backend.app.services.api.get_analysis import get_analysis_with_district
 from backend.app.services.api.get_recommand import get_recommendations, get_category_name
+from backend.app.constant import SEOUL_DISTRICTS
 
 
 app = FastAPI()
@@ -29,9 +30,13 @@ async def get_restaurants_api(district: str):
 @app.get('/analysis/district/{district}')
 # http://localhost:8000/analysis/district/강남구
 async def get_analysis_api(district: str):
+    if district not in SEOUL_DISTRICTS:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid district: {district}."
+        )
     
     analysis = get_analysis_with_district(supabase, district)
-        
     return [analysis.model_dump() for analysis in analysis]
 
 @app.get('/recommendations/{district}/{category}')
