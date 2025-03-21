@@ -40,6 +40,7 @@ async def get_analysis_api(district: str):
     return [analysis.model_dump() for analysis in analysis]
 
 @app.get('/recommendations/{district}/{category}')
+# http://localhost:8000/recommendations/강남구/hangover
 async def get_recommendations_api(district: str, category: str):
     try:
         category_name = get_category_name(category)
