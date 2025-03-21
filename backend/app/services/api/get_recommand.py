@@ -19,9 +19,8 @@ def get_recommendations(supabase: Client, district: str, category: str) -> List[
     try:
         response = supabase.table("analyze")\
             .select(
-                "*, restaurants!inner(*)"
+                "*, restaurants!inner(district)"
             )\
-            .eq("analyze.restaurant_id", "restaurants.id")\
             .eq("restaurants.district", district)\
             .execute()
             

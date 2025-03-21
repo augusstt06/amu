@@ -1,3 +1,5 @@
+# FIXME: district 컬럼 추가 요망
+
 # python -m app.services.analyze.run_analysis
 import hashlib
 from selenium import webdriver
