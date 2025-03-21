@@ -215,7 +215,6 @@ def calculate_rating_reliability(sentiment_score: float, user_ratings: list[floa
     return max(0, min(100, reliability))  
 
 def check_existing_analysis(supabase: Client, restaurant_id: str) -> bool:
-    """분석 결과가 이미 존재하는지 확인"""
     existing = supabase.table("analyze").select("id").eq("restaurant_id", str(restaurant_id)).execute()
     return len(existing.data) > 0
 
