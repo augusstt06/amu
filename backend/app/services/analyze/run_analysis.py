@@ -1,5 +1,4 @@
-# FIXME: db에 존재하는 식당 스킵.
-
+# python -m app.services.analyze.run_analysis
 import hashlib
 from selenium import webdriver
 from selenium.webdriver.common.by import By
@@ -13,7 +12,7 @@ import os
 from dotenv import load_dotenv
 from supabase import create_client, Client
 import time
-from app.services.analyze_reviews import analyze_reviews
+from app.services.analyze.review_analyzer import analyze_reviews
 from app.models.analyze import Analyze
 import numpy as np
 

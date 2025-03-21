@@ -1,5 +1,6 @@
 app/__pycache__
 app/services/__pycache__
+app/services/analyze/__pycache__
 app/db/__pycache__
 app/models/__pycache__
 /venv
