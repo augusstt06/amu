@@ -1,11 +1,11 @@
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 
-from backend.app.db.supabase import supabase
-from backend.app.get_restaurants import get_restaurants
-from backend.app.services.api.get_analysis import get_analysis_with_district
-from backend.app.services.api.get_recommand import get_recommendations, get_category_name
-from backend.app.constant import SEOUL_DISTRICTS
+from app.db.supabase import supabase
+from app.get_restaurants import get_restaurants
+from app.services.api.get_analysis import get_analysis_with_district
+from app.services.api.get_recommand import get_recommendations, get_category_name
+from app.constant import SEOUL_DISTRICTS
 
 
 app = FastAPI()

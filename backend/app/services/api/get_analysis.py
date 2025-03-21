@@ -6,9 +6,8 @@ def get_analysis_with_district(supabase: Client, district: str) -> List[Analyze]
     try:
         response = supabase.table("analyze")\
             .select(
-                "*, restaurants!inner(*)"
+                "*, restaurants(*)"
             )\
-            .eq("analyze.restaurant_id", "restaurants.id")\
             .eq("restaurants.district", district)\
             .execute()
             
