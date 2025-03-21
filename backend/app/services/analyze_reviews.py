@@ -1,3 +1,4 @@
+# FIXME: 프롬포트 수정하기.
 from typing import List
 import numpy as np
 from openai import OpenAI

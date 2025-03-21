@@ -214,6 +214,11 @@ def calculate_rating_reliability(sentiment_score: float, user_ratings: list[floa
     
     return max(0, min(100, reliability))  
 
+def check_existing_analysis(supabase: Client, restaurant_id: str) -> bool:
+    """분석 결과가 이미 존재하는지 확인"""
+    existing = supabase.table("analyze").select("id").eq("restaurant_id", str(restaurant_id)).execute()
+    return len(existing.data) > 0
+
 def main(supabase: Client):
     response = supabase.table("restaurants").select("id, name, district").execute()
     restaurants = response.data
@@ -222,6 +227,11 @@ def main(supabase: Client):
     
     for i, restaurant in enumerate(restaurants, 1):
         try:
+            # FIXME: 기존 분석 결과있으면 패스 (추후 주석처리)
+            if check_existing_analysis(supabase, restaurant['id']):
+                print(f"\n[{i}/{len(restaurants)}] 📌 {restaurant['name']} - 이미 분석 완료됨, 스킵")
+                continue
+                
             print(f"\n[{i}/{len(restaurants)}] 📌 {restaurant['name']}의 리뷰 수집 중...")
             reviews = get_reviews_with_selenium(
                 restaurant['name'], 
